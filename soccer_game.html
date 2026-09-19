@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サッカー監督ゲーム - パラメータ版</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #1e3d59; }
+        .score-board { display: flex; justify-content: space-around; margin: 20px 0; background: #e8eef1; padding: 15px; border-radius: 8px; text-align: center; }
+        .score-item { flex: 1; }
+        .score-num { font-size: 24px; font-weight: bold; color: #1e3d59; }
+        .panel { background: #f7f9fa; border: 1px solid #e1e8ed; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .panel-title { font-weight: bold; margin-bottom: 10px; color: #1e3d59; border-bottom: 2px solid #ffc13b; padding-bottom: 5px; }
+        .param-row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; }
+        .param-btn { background: #ffc13b; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .param-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .param-val { font-weight: bold; min-width: 30px; text-align: center; }
+        .radio-group { display: flex; gap: 10px; justify-content: space-between; }
+        .radio-group label { flex: 1; text-align: center; background: white; border: 1px solid #ccc; padding: 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .radio-group input { display: none; }
+        .radio-group input:checked + span { font-weight: bold; color: #1e3d59; }
+        .radio-group label:has(input:checked) { background: #e8eef1; border-color: #1e3d59; box-shadow: 0 0 5px rgba(30,61,89,0.3); }
+        button.main-btn { display: block; width: 100%; background: #1e3d59; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button.main-btn:hover { background: #173046; }
+        button.main-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .commentary { background: #222; color: #00ff00; font-family: monospace; padding: 15px; border-radius: 6px; min-height: 100px; max-height: 150px; overflow-y: auto; white-space: pre-line; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚽ サッカー監督ゲーム</h1>
+    
+    <div id="game-screen">
+        <h2>FC FUTURE</h2>
+        <div style="text-align: center; font-weight: bold; margin-bottom: 5px;" id="season-display">シーズン 1</div>
+        <div style="text-align: center; font-size: 18px; font-weight: bold; color: #ffc13b;" id="match-display">第 1 / 32 節</div>
+        
+        <div class="score-board">
+            <div class="score-item"><div class="score-num" id="wins">0</div><div>勝利</div></div>
+            <div class="score-item"><div class="score-num" id="draws">0</div><div>引分</div></div>
+            <div class="score-item"><div class="score-num" id="losses">0</div><div>敗戦</div></div>
+            <div class="score-item"><div class="score-num" id="points">0</div><div>勝点</div></div>
+        </div>
+        <div style="text-align: center; margin-bottom: 15px; font-size: 14px; color: #666;" id="total-matches">試合数： 0 / 32</div>
+
+        <div class="panel">
+            <div class="panel-title">📊 チームパラメータ (残りCP: <span id="cp-left">10</span>)</div>
+            <div class="param-row">
+                <span>⚔ オフェンス (攻撃力)</span>
+                <div>
+                    <button class="param-btn" onclick="adjustParam('offense', -1)">-</button>
+                    <span class="param-val" id="val-offense">10</span>
+                    <button class="param-btn" onclick="adjustParam('offense', 1)">+</button>
+                </div>
+            </div>
+            <div class="param-row">
+                <span>🛡 ディフェンス (守備力)</span>
+                <div>
+                    <button class="param-btn" onclick="adjustParam('defense', -1)">-</button>
+                    <span class="param-val" id="val-defense">10</span>
+                    <button class="param-btn" onclick="adjustParam('defense', 1)">+</button>
+                </div>
+            </div>
+            <div class="param-row">
+                <span>🏃 スタミナ (後半の粘り)</span>
+                <div>
+                    <button class="param-btn" onclick="adjustParam('stamina', -1)">-</button>
+                    <span class="param-val" id="val-stamina">10</span>
+                    <button class="param-btn" onclick="adjustParam('stamina', 1)">+</button>
+                </div>
+            </div>
+            <div class="param-row">
+                <span>🤝 チームワーク (戦術補正)</span>
+                <div>
+                    <button class="param-btn" onclick="adjustParam('teamwork', -1)">-</button>
+                    <span class="param-val" id="val-teamwork">10</span>
+                    <button class="param-btn" onclick="adjustParam('teamwork', 1)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">フォーメーション</div>
+            <div class="radio-group">
+                <label><input type="radio" name="formation" value="4-3-3" checked><span>4-3-3<br><small>(攻撃型)</small></span></label>
+                <label><input type="radio" name="formation" value="4-4-2"><span>4-4-2<br><small>(バランス)</small></span></label>
+                <label><input type="radio" name="formation" value="3-5-2"><span>3-5-2<br><small>(中盤重視)</small></span></label>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">戦術方針</div>
+            <div class="radio-group">
+                <label><input type="radio" name="tactics" value="attack" checked><span>🔥 攻撃重視</span></label>
+                <label><input type="radio" name="tactics" value="balance"><span>⚖ バランス</span></label>
+                <label><input type="radio" name="tactics" value="defense"><span>🛡 守備重視</span></label>
+            </div>
+        </div>
+
+        <button class="main-btn" id="start-btn" onclick="playMatch()">⚽ 試合開始</button>
+
+        <div style="margin-top: 15px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">📢 試合実況</div>
+            <div class="commentary" id="commentary-box">試合開始を待っています……</div>
+        </div>
+    </div>
+
+    <div id="season-end-screen" class="hidden">
+        <h2>🏆 シーズン終了</h2>
+        <div style="text-align: center; font-size: 20px; margin: 20px 0;">
+            最終勝点： <strong id="final-points" style="color: #ffc13b; font-size: 32px;">0</strong>
+        </div>
+        <div class="panel" style="text-align: center;">
+            <p>1シーズンお疲れ様でした！<br>次のシーズンではさらに能力を引き継いで挑戦できます。</p>
+        </div>
+        <button class="main-btn" onclick="nextSeason()">🔄 次のシーズンへ</button>
+    </div>
+</div>
+
+<script>
+    let season = 1;
+    let match = 1;
+    const totalMatchesCount = 32;
+    let stats = { wins: 0, draws: 0, losses: 0, points: 0 };
+    let params = { offense: 10, defense: 10, stamina: 10, teamwork: 10 };
+    let cp = 10;
+
+    function updateUI() {
+        document.getElementById('season-display').textContent = `シーズン ${season}`;
+        document.getElementById('match-display').textContent = `第 ${match} / ${totalMatchesCount} 節`;
+        document.getElementById('wins').textContent = stats.wins;
+        document.getElementById('draws').textContent = stats.draws;
+        document.getElementById('losses').textContent = stats.losses;
+        document.getElementById('points').textContent = stats.points;
+        document.getElementById('total-matches').textContent = `試合数： ${match - 1} / ${totalMatchesCount}`;
+        document.getElementById('cp-left').textContent = cp;
+        document.getElementById('val-offense').textContent = params.offense;
+        document.getElementById('val-defense').textContent = params.defense;
+        document.getElementById('val-stamina').textContent = params.stamina;
+        document.getElementById('val-teamwork').textContent = params.teamwork;
+    }
+
+    function adjustParam(type, amount) {
+        if (amount > 0 && cp > 0) { params[type]++; cp--; }
+        else if (amount < 0 && params[type] > 10) { params[type]--; cp++; }
+        updateUI();
+    }
+
+    function playMatch() {
+        if (match > totalMatchesCount) return;
+        const startBtn = document.getElementById('start-btn');
+        startBtn.disabled = true;
+
+        const formation = document.querySelector('input[name="formation"]:checked').value;
+        const tactics = document.querySelector('input[name="tactics"]:checked').value;
+
+        const rivalBase = 8 + (match * 0.2) + (season * 2);
+        const rivalOffense = rivalBase + (Math.random() * 4);
+        const rivalDefense = rivalBase + (Math.random() * 4);
+
+        let offBonus = 0; let defBonus = 0;
+        if (formation === '4-3-3') { offBonus += 2; defBonus -= 1; }
+        if (formation === '3-5-2') { offBonus += 1; defBonus += 1; }
+        if (tactics === 'attack') { offBonus += 3; defBonus -= 2; }
+        if (tactics === 'defense') { offBonus -= 2; defBonus += 3; }
+
+        const twModifier = params.teamwork * 0.1;
+        let myOffense = params.offense + offBonus + twModifier;
+        let myDefense = params.defense + defBonus + twModifier;
+        let staminaBonus = params.stamina > 12 ? (params.stamina - 12) * 0.2 : 0;
+
+        const commBox = document.getElementById('commentary-box');
+        commBox.textContent = `キックオフ！ FC FUTURE vs RIVAL\n`;
+        let myScore = 0; let rivalScore = 0;
+
+        setTimeout(() => {
+            commBox.textContent += `[前半] `;
+            if (myOffense * Math.random() > rivalDefense * Math.random()) {
+                myScore++; commBox.textContent += `⚽ ゴール！！FC FUTUREが先制！\n`;
+            } else if (rivalOffense * Math.random() > myDefense * Math.random()) {
+                rivalScore++; commBox.textContent += `⚠️ 失点… 裏を突かれました。\n`;
+            } else { commBox.textContent += `一進一退の攻防。互いに決定機を作れず。\n`; }
+            commBox.scrollTop = commBox.scrollHeight;
+        }, 800);
+
+        setTimeout(() => {
+            commBox.textContent += `[後半] `;
+            let currentMyOffense = myOffense + staminaBonus;
+            let currentMyDefense = myDefense + staminaBonus;
+
+            if (currentMyOffense * Math.random() > rivalDefense * Math.random()) {
+                myScore++; commBox.textContent += `⚽ ゴール！！怒涛の攻撃が実を結びました！\n`;
+            } else if (rivalOffense * Math.random() > currentMyDefense * Math.random()) {
+                rivalScore++; commBox.textContent += `⚠️ 失点… 足が止まったところを狙われました。\n`;
+            } else { commBox.textContent += `激しい中盤の潰し合いが続きます。\n`; }
+
+            commBox.textContent += `\n【試合終了】 FC FUTURE ${myScore} - ${rivalScore} RIVAL\n`;
+            if (myScore > rivalScore) { stats.wins++; stats.points += 3; commBox.textContent += `🎉 見事な勝利です！`; }
+            else if (myScore === rivalScore) { stats.draws++; stats.points += 1; commBox.textContent += `🤝 ドローゲームとなりました。`; }
+            else { stats.losses++; commBox.textContent += `😢 惜しくも敗戦。`; }
+
+            match++; updateUI();
+            commBox.scrollTop = commBox.scrollHeight; startBtn.disabled = false;
+            if (match > totalMatchesCount) { setTimeout(showSeasonEnd, 1500); }
+        }, 1800);
+    }
+
+    function showSeasonEnd() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('season-end-screen').classList.remove('hidden');
+        document.getElementById('final-points').textContent = stats.points;
+    }
+
+    function nextSeason() {
+        season++; match = 1; stats = { wins: 0, draws: 0, losses: 0, points: 0 }; cp += 15;
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('season-end-screen').classList.add('hidden');
+        document.getElementById('commentary-box').textContent = `新シーズン開始！`;
+        updateUI();
+    }
+    updateUI();
+</script>
+</body>
+</html>
