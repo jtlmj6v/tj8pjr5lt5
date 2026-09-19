@@ -1,4 +1,139 @@
 <!DOCTYPE html>
-<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>サッカー監督ゲーム</title><style>html,body,iframe{margin:0;padding:0;width:100%;height:100%;border:none;overflow:hidden;}</style></head>
-<body><iframe src="https://github.io"></iframe></body>
-</html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サッカー監督ゲーム - 選手個別育成版</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #121824; color: #e2e8f0; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h1, h2 { text-align: center; color: #f8fafc; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-bottom: 5px; }
+        
+        /* 順位表（テーブル）のスタイル */
+        .ranking-table { width: 100%; border-collapse: collapse; margin: 15px 0; background: #0f172a; border-radius: 8px; overflow: hidden; border: 1px solid #334155; font-size: 13px; text-align: center; }
+        .ranking-table th { background: #1e293b; color: #38bdf8; padding: 10px; font-weight: bold; border-bottom: 1px solid #334155; }
+        .ranking-table td { padding: 10px; border-bottom: 1px solid #1e293b; }
+        .ranking-table tr.my-team { background: rgba(56, 189, 248, 0.15); font-weight: bold; color: #38bdf8; }
+        
+        .score-board { display: flex; justify-content: space-around; margin: 15px 0; background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+        .score-item { flex: 1; }
+        .score-num { font-size: 20px; font-weight: bold; color: #38bdf8; }
+        .panel { background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        .panel-title { font-weight: bold; margin-bottom: 10px; color: #f1f5f9; border-bottom: 2px solid #38bdf8; padding-bottom: 5px; }
+        
+        /* 選手個別パラメータ用スタイル */
+        .player-card { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 10px; margin: 8px 0; }
+        .player-info { display: flex; justify-content: space-between; font-weight: bold; color: #f8fafc; font-size: 14px; margin-bottom: 5px; }
+        .player-pos { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a; }
+        .pos-fw { background: #f43f5e; }
+        .pos-mf { background: #eab308; }
+        .pos-df { background: #22c55e; }
+        .pos-gk { background: #a855f7; }
+        .param-row { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; font-size: 13px; }
+        .param-btn { background: #38bdf8; color: #0f172a; border: none; width: 24px; height: 24px; border-radius: 50%; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.1s; }
+        .param-btn:hover { background: #7dd3fc; }
+        .param-btn:disabled { background: #64748b; cursor: not-allowed; }
+        .param-val { font-weight: bold; min-width: 25px; text-align: center; color: #f8fafc; }
+
+        .radio-group { display: flex; gap: 10px; justify-content: space-between; }
+        .radio-group label { flex: 1; text-align: center; background: #0f172a; border: 1px solid #475569; padding: 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; color: #94a3b8; }
+        .radio-group input { display: none; }
+        .radio-group input:checked + span { font-weight: bold; color: #38bdf8; }
+        .radio-group label:has(input:checked) { background: #1e293b; border-color: #38bdf8; box-shadow: 0 0 8px rgba(56,189,248,0.4); }
+        button.main-btn { display: block; width: 100%; background: #0284c7; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        button.main-btn:hover { background: #0369a1; }
+        button.main-btn:disabled { background: #64748b; cursor: not-allowed; }
+        .commentary { background: #020617; color: #4ade80; font-family: monospace; padding: 15px; border-radius: 6px; min-height: 120px; max-height: 160px; overflow-y: auto; white-space: pre-line; border: 1px solid #334155; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚽ サッカー監督ゲーム</h1>
+    
+    <div id="game-screen">
+        <h2>FC FUTURE</h2>
+        <div style="text-align: center; font-weight: bold; margin-bottom: 5px; color: #94a3b8;" id="season-display">シーズン 1</div>
+        <div style="text-align: center; font-size: 18px; font-weight: bold; color: #38bdf8;" id="match-display">第 1 / 32 節</div>
+        
+        <!-- リアルタイム順位表 -->
+        <div style="font-weight: bold; margin-bottom: 2px; color: #94a3b8; font-size: 14px;">📊 リーグ順位表</div>
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">順</th>
+                    <th style="width: 40%; text-align: left; padding-left: 10px;">チーム名</th>
+                    <th style="width: 15%;">勝点</th>
+                    <th style="width: 15%;">得失差</th>
+                    <th style="width: 20%;">試合数</th>
+                </tr>
+            </thead>
+            <tbody id="ranking-body"></tbody>
+        </table>
+
+        <div class="score-board">
+            <div class="score-item"><div class="score-num" id="wins">0</div><div style="color:#94a3b8; font-size:12px;">勝利</div></div>
+            <div class="score-item"><div class="score-num" id="draws">0</div><div style="color:#94a3b8; font-size:12px;">引分</div></div>
+            <div class="score-item"><div class="score-num" id="losses">0</div><div style="color:#94a3b8; font-size:12px;">敗戦</div></div>
+            <div class="score-item"><div class="score-num" id="points">0</div><div style="color:#94a3b8; font-size:12px;">現在の勝点</div></div>
+        </div>
+
+        <!-- 選手個別パラメータ育成パネル -->
+        <div class="panel">
+            <div class="panel-title">👥 選手個別育成 (残りCP: <span id="cp-left">10</span>)</div>
+            
+            <!-- FW 佐藤 -->
+            <div class="player-card">
+                <div class="player-info"><span>佐藤 健太</span><span class="player-pos pos-fw">FW</span></div>
+                <div class="param-row"><span>⚔ オフェンス (決定力)</span><div><button class="param-btn" onclick="adjustPlayerParam('fw', 'offense', -1)">-</button><span class="param-val" id="val-fw-off">10</span><button class="param-btn" onclick="adjustPlayerParam('fw', 'offense', 1)">+</button></div></div>
+                <div class="param-row"><span>🏃 スタミナ (後半の粘り)</span><div><button class="param-btn" onclick="adjustPlayerParam('fw', 'stamina', -1)">-</button><span class="param-val" id="val-fw-sta">10</span><button class="param-btn" onclick="adjustPlayerParam('fw', 'stamina', 1)">+</button></div></div>
+            </div>
+
+            <!-- MF 鈴木 -->
+            <div class="player-card">
+                <div class="player-info"><span>鈴木 翼</span><span class="player-pos pos-mf">MF</span></div>
+                <div class="param-row"><span>⚔ オフェンス (展開力)</span><div><button class="param-btn" onclick="adjustPlayerParam('mf', 'offense', -1)">-</button><span class="param-val" id="val-mf-off">10</span><button class="param-btn" onclick="adjustPlayerParam('mf', 'offense', 1)">+</button></div></div>
+                <div class="param-row"><span>🛡 ディフェンス (中盤の守備)</span><div><button class="param-btn" onclick="adjustPlayerParam('mf', 'defense', -1)">-</button><span class="param-val" id="val-mf-def">10</span><button class="param-btn" onclick="adjustPlayerParam('mf', 'defense', 1)">+</button></div></div>
+            </div>
+
+            <!-- DF 高橋 -->
+            <div class="player-card">
+                <div class="player-info"><span>高橋 大樹</span><span class="player-pos pos-df">DF</span></div>
+                <div class="param-row"><span>🛡 ディフェンス (ボール奪取)</span><div><button class="param-btn" onclick="adjustPlayerParam('df', 'defense', -1)">-</button><span class="param-val" id="val-df-def">10</span><button class="param-btn" onclick="adjustPlayerParam('df', 'defense', 1)">+</button></div></div>
+                <div class="param-row"><span>🏃 スタミナ (運動量)</span><div><button class="param-btn" onclick="adjustPlayerParam('df', 'stamina', -1)">-</button><span class="param-val" id="val-df-sta">10</span><button class="param-btn" onclick="adjustPlayerParam('df', 'stamina', 1)">+</button></div></div>
+            </div>
+
+            <!-- GK 田中 -->
+            <div class="player-card">
+                <div class="player-info"><span>田中 守</span><span class="player-pos pos-gk">GK</span></div>
+                <div class="param-row"><span>🛡 ディフェンス (セービング)</span><div><button class="param-btn" onclick="adjustPlayerParam('gk', 'defense', -1)">-</button><span class="param-val" id="val-gk-def">10</span><button class="param-btn" onclick="adjustPlayerParam('gk', 'defense', 1)">+</button></div></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">フォーメーション</div>
+            <div class="radio-group">
+                <label><input type="radio" name="formation" value="4-3-3" checked><span>4-3-3<br><small>(攻撃型)</small></span></label>
+                <label><input type="radio" name="formation" value="4-4-2"><span>4-4-2<br><small>(バランス)</small></span></label>
+                <label><input type="radio" name="formation" value="3-5-2"><span>3-5-2<br><small>(中盤重視)</small></span></label>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">戦術方針</div>
+            <div class="radio-group">
+                <label><input type="radio" name="tactics" value="attack" checked><span>🔥 攻撃重視</span></label>
+                <label><input type="radio" name="tactics" value="balance"><span>⚖ バランス</span></label>
+                <label><input type="radio" name="tactics" value="defense"><span>🛡 守備重視</span></label>
+            </div>
+        </div>
+
+        <button class="main-btn" id="start-btn" onclick="playMatch()">⚽ 試合開始</button>
+
+        <div style="margin-top: 15px;">
+
+📢 試合実況試合開始を待っています……🏆 シーズン終了あなたの最終順位： 0 位獲得総勝点： 0 pt1シーズンお疲れ様でした！🔄 次のシーズンへ
+---
+
+準備が整いましたら、ゲームが実際に動く
