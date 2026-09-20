@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>放置育成マルチサッカー</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; text-align: center; padding: 20px; }
+        .card { background: #2a2a2a; padding: 20px; border-radius: 10px; max-width: 400px; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        button { background: #00c853; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; width: 80%; }
+        button:hover { background: #00e676; }
+        .status { font-size: 18px; margin: 10px 0; }
+        #log { background: #000; color: #0f0; padding: 10px; border-radius: 5px; text-align: left; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h1>⚽ 育成＆非同期マルチバトル</h1>
+
+    <!-- 1. チーム作成・ステータス表示画面 -->
+    <div class="card">
+        <h2>🏋️ 自分のチーム管理</h2>
+        <div class="status">チーム名: <span id="my-name">FC FUTURE</span></div>
+        <div class="status">⚔️ ATK: <span id="my-atk">10</span> / 🛡️ DEF: <span id="my-def">10</span></div>
+        <button id="train-atk-btn">💪 攻撃力を特訓 (+5)</button>
+        <button id="train-def-btn">🏃 守備力を特訓 (+5)</button>
+        <button id="save-btn" style="background:#0288d1;">💾 データをサーバーに保存</button>
+    </div>
+
+    <!-- 2. 試合スタジアム画面 -->
+    <div class="card">
+        <h2>🏟️ 試合スタジアム</h2>
+        <button id="match-btn" style="background:#d32f2f; font-weight:bold;">⚔️ 他のプレイヤーと対戦！</button>
+        <div id="vs-display" style="margin-top:15px; font-size:18px; font-weight:bold;"></div>
+    </div>
+
+    <!-- 3. 通信・試合ログ -->
+    <div class="card" style="max-width: 500px;">
+        <h3>📋 試合・通信ログ</h3>
+        <div id="log">ゲームが起動しました。まずは特訓して保存してみよう！</div>
+    </div>
+
+    <!-- 💡 ここからデータベースと繋がるプログラム -->
+    <script type="module">
+        import { createClient } from 'https://jsdelivr.net'
+
+        // 接続用の情報
+        const SUPABASE_URL = 'https://supabase.co'
+        const SUPABASE_KEY = 'sb_publishable_aNOURrGhRme3kbJAAp2qLA_2qDXPO2K'
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // 💡 あなた専用のプレイヤーID（本当は毎回ランダム生成するかログイン機能を作りますが、テスト用に固定します）
+        // 友達とテストする時は、この文字列をそれぞれ「player_friend1」などに変えると別の人間として認識されます
+        const MY_PLAYER_ID = "player_tester_999"; 
+        
+        // ローカルのステータス管理
+        let myTeamName = "FC FUTURE";
+        let myAtk = 10;
+        let myDef = 10;
+
+        // ログ出力関数
+        function addLog(text) {
+            const logDiv = document.getElementById("log");
+            logDiv.innerHTML += "<br>> " + text;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // 画面の数値を更新する関数
+        function updateUI() {
+            document.getElementById("my-atk").innerText = myAtk;
+            document.getElementById("my-def").innerText = myDef;
+        }
+
+        // 【ボタン処理】攻撃特訓
+        document.getElementById("train-atk-btn").addEventListener("click", () => {
+            myAtk += 5;
+            updateUI();
+            addLog("攻撃力を特訓しました！");
+        });
+
+        // 【ボタン処理】守備特訓
+        document.getElementById("train-def-btn").addEventListener("click", () => {
+            myDef += 5;
+            updateUI();
+            addLog("守備力を特訓しました！");
+        });
+
+        // 【通信】データをサーバーに保存（セーブ）
+        document.getElementById("save-btn").addEventListener("click", async () => {
+            addLog("サーバーにデータを送信中...");
+            const { error } = await supabase
+                .from('players')
+                .upsert({ 
+                    id: MY_PLAYER_ID, 
+                    team_name: myTeamName, 
+                    attack_power: myAtk, 
+                    defense_power: myDef,
+                    points: 0
+                });
+
+            if (error) {
+                addLog("エラー: 保存に失敗しました。テーブル名を確認してください。");
+                console.error(error);
+            } else {
+                addLog("🎉 保存成功！他のプレイヤーがあなたと戦えるようになりました。");
+            }
+        });
+
+        // 【通信＆試合】他のプレイヤーのデータを引っ張ってきて自動戦闘
+        document.getElementById("match-btn").addEventListener("click", async () => {
+            addLog("対戦相手をサーバーから探しています...");
+            
+            // 自分以外のプレイヤーを最大10件取得
+            const { data, error } = await supabase
+                .from('players')
+                .select('*')
+                .neq('id', MY_PLAYER_ID);
+
+            if (error || !data || data.length === 0) {
+                addLog("対戦相手が見つかりません。別のブラウザや友達にデータを保存してもらってください！");
+                return;
+            }
+
+            // ランダムに1人選ぶ
+            const randomIndex = Math.floor(Math.random() * data.length);
+            const opponent = data[randomIndex];
+            
+            document.getElementById("vs-display").innerHTML = `VS ${opponent.team_name}<br>(敵ATK: ${opponent.attack_power} / 敵DEF: ${opponent.defense_power})`;
+            addLog(`対戦相手決定: ${opponent.team_name}`);
+
+            // 簡易的な試合シミュレーションロジック
+            // 自分のATKと相手のDEF、相手のATKと自分のDEFを競わせる
+            let myScore = 0;
+            let opponentScore = 0;
+
+            if (myAtk > opponent.defense_power) myScore += Math.floor(Math.random() * 3) + 1;
+            if (opponent.attack_power > myDef) opponentScore += Math.floor(Math.random() * 3) + 1;
+
+            addLog(`【試合結果】 ${myScore} - ${opponentScore}`);
+            if (myScore > opponentScore) {
+                addLog("🏆 試合に勝利しました！");
+            } else if (myScore < opponentScore) {
+                addLog("💀 敗北しました...");
+            } else {
+                addLog("🤝 引き分けです。");
+            }
+        });
+
+    </script>
+</body>
+</html>
