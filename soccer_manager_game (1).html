@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サッカー監督ゲーム</title>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #1b5e20;
+            --accent-color: #d84315;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .game-container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .section {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status-item {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .vs-display {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 10px;
+            background: #edf7ed;
+            border-radius: 6px;
+            color: var(--secondary-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .stat-box {
+            background: #f1f8e9;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .stat-num {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .options-group {
+            margin-bottom: 15px;
+        }
+
+        .options-label {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .radio-tile-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .radio-tile {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .radio-tile-group input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .radio-tile-group input[type="radio"]:checked + .radio-tile {
+            border-color: var(--primary-color);
+            background-color: #e8f5e9;
+            font-weight: bold;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .commentary-box {
+            background: #222;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 12px;
+            border-radius: 6px;
+            height: 120px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .season-end-panel {
+            display: none;
+            background: #fff3e0;
+            border: 2px dashed var(--accent-color);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .season-end-title {
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>⚽ サッカー監督ゲーム</h1>
+
+    <!-- チーム・進捗ステロース -->
+    <div class="section">
+        <div class="section-title">🏢 FC FUTURE</div>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-label">シーズン</div>
+                <div class="status-value" id="display-season">1</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">進行度</div>
+                <div class="status-value" id="display-match-progress">第 1 / 34 節</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">総チーム数</div>
+                <div class="status-value" id="display-total-teams">18 チーム</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">相手チーム強さ</div>
+                <div class="status-value" id="display-enemy-lv" style="color: var(--accent-color);">Lv.1</div>
+            </div>
+        </div>
+        <div class="vs-display" id="vs-text">
+            FC FUTURE 0 - 0 RIVAL FC
+        </div>
+        <button class="btn" id="btn-match" onclick="playMatch()">⚽ 試合開始</button>
+    </div>
+
+    <!-- チーム成績 -->
+    <div class="section">
+        <div class="section-title">📊 チーム成績</div>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-num" id="stat-wins">0</div>
+                <div class="stat-label">勝利</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="stat-draws">0</div>
+                <div class="stat-label">引分</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="stat-losses">0</div>
+                <div class="stat-label">敗戦</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="stat-points" style="color: var(--accent-color);">0</div>
+                <div class="stat-label">勝点</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.9rem; color: #666;" id="display-match-count">
+            試合数： 0 / 34
+        </div>
+    </div>
+
+    <!-- 戦術設定 -->
+    <div class="section">
+        <div class="section-title">🧠 戦術</div>
+        
+        <div class="options-group">
+            <div class="options-label">フォーメーション</div>
+            <div class="radio-tile-group">
+                <label>
+                    <input type="radio" name="formation" value="4-3-3" checked>
+                    <div class="radio-tile">4-3-3</div>
+                </label>
+                <label>
+                    <input type="radio" name="formation" value="4-4-2">
+                    <div class="radio-tile">4-4-2</div>
+                </label>
+                <label>
+                    <input type="radio" name="formation" value="3-5-2">
+                    <div class="radio-tile">3-5-2</div>
+                </label>
+            </div>
+        </div>
+
+        <div class="options-group">
+            <div class="options-label">戦術スタイル</div>
+            <div class="radio-tile-group">
+                <label>
+                    <input type="radio" name="tactics" value="攻撃重視" checked>
+                    <div class="radio-tile">🔥 攻撃重視</div>
+                </label>
+                <label>
+                    <input type="radio" name="tactics" value="バランス">
+                    <div class="radio-tile">⚖ バランス</div>
+                </label>
+                <label>
+                    <input type="radio" name="tactics" value="守備重視">
+                    <div class="radio-tile">🛡 守備重視</div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 試合実況 -->
+    <div class="section">
+        <div class="section-title">📢 試合実況</div>
+        <div class="commentary-box" id="commentary-log">
+            試合開始を待っています……
+        </div>
+    </div>
+
+    <!-- シーズン終了パネル -->
+    <div class="season-end-panel" id="season-end-panel">
+        <div class="season-end-title">🏆 シーズン終了</div>
+        <p>最終勝点： <span id="final-points" style="font-weight: bold; font-size: 1.3rem; color: var(--accent-color);">0</span></p>
+        <button class="btn" style="background: var(--accent-color);" onclick="nextSeason()">🔄 次のシーズンへ</button>
+    </div>
+</div>
+
+<script>
+    // ゲームステート
+    let season = 1;
+    let currentMatch = 1;
+    const totalTeams = 18;
+    const totalMatches = (totalTeams - 1) * 2; // 18チームのH&A総当たり=34試合
+
+    let wins = 0;
+    let draws = 0;
+    let losses = 0;
+    let points = 0;
+
+    // 対戦相手候補名一覧
+    const teamNames = ["RIVAL FC", "TOKYO UNITED", "OSAKA SHARKS", "NAGOYA WINGS", "FUKUOKA REVOLUTION", "SAPPORO ICE", "SENDAI BLIZZARD", "YOKOHAMA MARINERS", "KOBE HARBOR"];
+
+    function getRandomEnemy() {
+        return teamNames[Math.floor(Math.random() * teamNames.length)];
+    }
+
+    let currentEnemy = getRandomEnemy();
+    let enemyLv = 1;
+
+    // UI初期化
+    function updateUI() {
+        document.getElementById('display-season').innerText = season;
+        document.getElementById('display-match-progress').innerText = `第 ${currentMatch} / ${totalMatches} 節`;
+        document.getElementById('display-total-teams').innerText = `${totalTeams} チーム`;
+        document.getElementById('display-enemy-lv').innerText = `Lv.${enemyLv}`;
+        document.getElementById('vs-text').innerText = `FC FUTURE 0 - 0 ${currentEnemy}`;
+        
+        document.getElementById('stat-wins').innerText = wins;
+        document.getElementById('stat-draws').innerText = draws;
+        document.getElementById('stat-losses').innerText = losses;
+        document.getElementById('stat-points').innerText = points;
+        document.getElementById('display-match-count').innerText = `試合数： ${wins + draws + losses} / ${totalMatches}`;
+    }
+
+    function playMatch() {
+        if (currentMatch > totalMatches) return;
+
+        const btn = document.getElementById('btn-match');
+        btn.disabled = true;
+
+        // 選択された戦術の取得
+        const tactics = document.querySelector('input[name="tactics"]:checked').value;
+        const formation = document.querySelector('input[name="formation"]:checked').value;
+
+        const log = document.getElementById('commentary-log');
+        log.innerHTML = `【第 ${currentMatch} 節】 vs ${currentEnemy} (Lv.${enemyLv})<br>フォーメーション [${formation}]、[${tactics}] でキックオフ！<br>`;
+        log.scrollTop = log.scrollHeight;
+
+        // 試合シミュレーションロジック
+        let myBase = 1.2;
+        if (tactics === "攻撃重視") myBase += 0.3;
+        if (tactics === "守備重視") myBase -= 0.1;
+
+        let enemyBase = 0.8 + (enemyLv * 0.15);
+
+        // スコア決定 (ランダム要素)
+        let myGoals = Math.floor(Math.random() * (myBase + 1.5));
+        let enemyGoals = Math.floor(Math.random() * (enemyBase + 1.2));
+
+        if (tactics === "守備重視" && enemyGoals > 0) {
+            if (Math.random() > 0.4) enemyGoals--; // 守備補正
+        }
+
+        // 実況テキスト生成の遅延演出
+        setTimeout(() => {
+            log.innerHTML += `前半終了: FC FUTURE ${Math.max(0, Math.floor(myGoals/2))} - ${Math.max(0, Math.floor(enemyGoals/2))} ${currentEnemy}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }, 600);
+
+        setTimeout(() => {
+            // 結果判定
+            let resultText = "";
+            if (myGoals > enemyGoals) {
+                wins++;
+                points += 3;
+                resultText = "🎉 試合終了！素晴らしい采配で見事勝利を収めました！";
+            } else if (myGoals === enemyGoals) {
+                draws++;
+                points += 1;
+                resultText = "⚖ 試合終了！激戦の末、引き分けとなりました。";
+            } else {
+                losses++;
+                resultText = "🛡 試合終了… 力及ばず敗戦。次節に向けて戦術を見直しましょう。";
+            }
+
+            document.getElementById('vs-text').innerText = `FC FUTURE ${myGoals} - ${enemyGoals} ${currentEnemy}`;
+            log.innerHTML += `後半終了！ 最終スコア: ${myGoals} - ${enemyGoals}<br><span style="color: #fff;">${resultText}</span><br>`;
+            log.scrollTop = log.scrollHeight;
+
+            // スコア・勝ち点の更新
+            updateUI();
+
+            // 節を進める
+            currentMatch++;
+
+            if (currentMatch > totalMatches) {
+                // シーズン終了
+                btn.disabled = true;
+                document.getElementById('final-points').innerText = points;
+                document.getElementById('season-end-panel').style.display = 'block';
+            } else {
+                // 次の試合の準備
+                currentEnemy = getRandomEnemy();
+                // ランダムに敵のレベルが変動
+                enemyLv = Math.max(1, Math.floor(Math.random() * 3) + season);
+                btn.disabled = false;
+            }
+        }, 1200);
+    }
+
+    function nextSeason() {
+        season++;
+        currentMatch = 1;
+        wins = 0;
+        draws = 0;
+        losses = 0;
+        points = 0;
+        enemyLv = season; // 新シーズンで敵が少し強くなる
+        currentEnemy = getRandomEnemy();
+
+        document.getElementById('season-end-panel').style.display = 'none';
+        document.getElementById('btn-match').disabled = false;
+        
+        const log = document.getElementById('commentary-log');
+        log.innerHTML = `新シーズン (シーズン ${season}) が開幕しました！最初の試合開始を待っています……`;
+        
+        updateUI();
+    }
+
+    // 初回実行
+    updateUI();
+</script>
+
+</body>
+</html>
