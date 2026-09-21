@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>戦国七雄・極限死闘</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 10px; font-size: 14px; }
+        .box { max-width: 480px; margin: 0 auto; background: #1e1e1e; padding: 12px; border-radius: 10px; }
+        h1, h3 { text-align: center; color: #fc0; margin-bottom: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 5px 0; }
+        .item { background: #222; padding: 4px; border-left: 3px solid #fc0; font-size: 12px; }
+        .screen { display: none; min-height: 300px; }
+        .active { display: block; }
+        .map { max-height: 220px; overflow-y: auto; background: #151515; padding: 4px; border: 1px solid #333; margin-bottom: 10px; }
+        .btn { display: block; width: 100%; padding: 10px; margin: 6px 0; background: #444; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; }
+        .c-btn { display: block; width: 100%; padding: 8px; margin: 4px 0; color: #fff; border: none; border-radius: 4px; text-align: left; cursor: pointer; font-size: 13px; }
+        .player { background: #a32; border-left: 4px solid #fc0; }
+        .enemy { background: #23a; border-left: 4px solid #f33; }
+        .c-btn span { float: right; font-size: 11px; background: rgba(0,0,0,0.4); padding: 1px 4px; border-radius: 3px; }
+        .info { background: #222; padding: 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; border: 1px solid #333; }
+        .log { background: #000; border: 1px solid #333; padding: 8px; border-radius: 4px; font-size: 12px; max-height: 120px; overflow-y: auto; color: #0f0; font-family: monospace; white-space: pre-wrap; }
+        select { width: 100%; padding: 8px; margin: 4px 0; background: #2d2d2d; color: #fff; border: 1px solid #555; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>⚔️ 戦国七雄・天下統一 ⚔️</h1>
+    <div style="text-align:center; font-size:11px; color:#f33; font-weight:bold; margin-bottom:8px;">⚠️【最凶難易度】AI猛攻＆19都市完全占領システム</div>
+    <div class="info" style="background:#2d2d2d;">
+        <div>自軍: <strong>趙</strong> <span style="float:right;">ターン: <strong id="t-turn">1</strong></span></div>
+        <div class="grid">
+            <div class="item">💰金: <span id="t-gold">1500</span></div>
+            <div class="item">🌾兵糧: <span id="t-rice">6000</span></div>
+            <div class="item">🛡️自軍兵: <span id="t-troops">7000</span></div>
+            <div class="item">🏙️都市: <span id="t-cities">2</span> / 19</div>
+        </div>
+    </div>
+    <div id="s-main" class="screen active">
+        <h3>🗺️ 1枚マップ (都市を選択)</h3>
+        <div class="map" id="m-list"><!-- ここに都市ボタンが自動で表示されます --></div>
+        <h3>📜 今期の命令（プロット）</h3>
+        <div class="info" id="p-txt" style="color:#fc0; text-align:center; font-weight:bold;">命令なし</div>
+        <button class="btn" style="background:#283;" onclick="run()">➡ 進行フェイズを実行する</button>
+    </div>
+    <div id="s-city" class="screen">
+        <h3 id="c-ttl">都市</h3>
+        <div class="info">
+            <div>所属: <span id="c-own">趙</span> | 兵力: <span id="c-trp">0</span></div>
+            <div style="margin-top:4px; font-weight:bold;" id="g-ttl">📍 武将:</div>
+            <div id="c-gens"></div>
+        </div>
+        <div id="ops-p">
+            <button class="btn" style="border-left:4px solid #283;" onclick="goAtk()">⚔️ 出陣（隣接敵国へ進軍）</button>
+            <button class="btn" style="border-left:4px solid #028;" onclick="changeS('s-dom')">🏛️ 国策（都市内政）</button>
+        </div>
+        <div id="ops-e" style="display:none;" class="info" style="color:#f33; text-align:center; font-weight:bold;">⚠敵領地。自軍都市から出陣してください。</div>
+        <button class="btn" style="background:#555;" onclick="changeS('s-main')">戻る</button>
+    </div>
+    <div id="s-dom" class="screen">
+        <h3 id="d-ttl">都市内政</h3>
+        <div class="info" id="d-bns"></div>
+        <button class="btn" onclick="setP('富国強兵')">💰 富国強兵 (金-200 / 糧+1000)</button>
+        <button class="btn" onclick="setP('大徴兵令')">🧑‍🤝‍🧑 大徴兵令 (金-400 / 兵+2000)</button>
+        <button class="btn" style="background:#555;" onclick="changeS('s-city')">戻る</button>
+    </div>
+    <div id="s-atk" class="screen">
+        <h3>出陣発令</h3>
+        <label>部隊長選択:</label><select id="sel-g"></select>
+        <label style="margin-top:6px; display:block;">目標都市選択:</label><select id="sel-t"></select>
+        <button class="btn" style="background:#a32;" onclick="setP('出陣')">⚔️ 侵攻命令を登録</button>
+        <button class="btn" style="background:#555;" onclick="changeS('s-city')">戻る</button>
+    </div>
+    <h3>📜 戦況報告</h3>
+    <div class="log" id="l-log">【システム】AI超活発化！敵（秦・斉等）は毎ターン大増兵し趙を滅ぼしにかかります！迅速に敵都市を奪わねばジリ貧になります。</div>
+</div>
+<script>
+    // この下に前回お渡しした後半のコード（その1とその2）をそのまま繋げて貼り付けてください。
+</script>
+</body>
+</html>
+
+<script>
+    let cities = [
+        { id: 0, name: '邯鄲', country: '趙', troops: 4000 }, { id: 1, name: '晋陽', country: '趙', troops: 3000 },
+        { id: 2, name: '咸陽', country: '秦', troops: 12000, g: '白起', s: '【殲滅京観】敵士気大破' }, { id: 3, name: '函谷関', country: '秦', troops: 9000, g: '王齕', s: '【怪気炎】猛烈突撃' },
+        { id: 4, name: '臨淄', country: '斉', troops: 8500, g: '孫臏', s: '【囲魏救趙】強制混乱' }, { id: 5, name: '即墨', country: '斉', troops: 6000, g: '田単', s: '【火牛の計】大炎上' },
+        { id: 6, name: '寿春', country: '楚', troops: 10000, g: '項燕', s: '【雷轟電撃】突破力' }, { id: 7, name: '郢', country: '楚', troops: 7500, g: '屈匄', s: '【屈強堅守】防衛強化' },
+        { id: 8, name: '大梁', country: '魏', troops: 8000, g: '信陵君', s: '【窃符救趙】戦意MAX' }, { id: 9, name: '新鄭', country: '韓', troops: 5000, g: '申不害', s: '【術治内政】防衛罠' },
+        { id: 10, name: '薊', country: '燕', troops: 7000, g: '楽毅', s: '【連城陥落】城壁無視' }, { id: 11, name: '武陽', country: '燕', troops: 5500, g: '劇辛', s: '【猛進連撃】連続攻撃' },
+        { id: 12, name: '藍田', country: '秦', troops: 8000, g: '樗里疾', s: '【知勇兼備】攻守死角無' }, { id: 13, name: '濮陽', country: '魏', troops: 6000, g: '魏無忌', s: '【貴公子】部隊強化' },
+        { id: 14, name: '高平', country: '韓', troops: 4500, g: '暴鳶', s: '【死線強襲】決死反撃' }, { id: 15, name: '琅邪', country: '斉', troops: 6500, g: '匡章', s: '【多国連軍】連携攻撃' },
+        { id: 16, name: '宛', country: '楚', troops: 7000, g: '景翠', s: '【包囲破砕】包囲突破' }, { id: 17, name: '平陽', country: '秦', troops: 7500, g: '司馬錯', s: '【縦横無尽】遊撃戦' },
+        { id: 18, name: '太原', country: '魏', troops: 5000, g: '魏劼', s: '【一気果断】果敢攻め' }
+    ];
+    let game = { gold: 1500, rice: 6000, turn: 1, plot: null, cId: null };
+    const pGens = [
+        { name: '李牧', ld: 98, s: '【新意奇謀】(勝利確率+25%)' }, { name: '廉頗', ld: 96, s: '【不落鉄壁】(損害30%カット)' }, { name: '趙奢', ld: 90, s: '【狭路空谷】(格上勝利確率+15%)' }
+    ];
+    function changeS(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 's-main') render();
+    }
+    function render() {
+        let html = '', pC = 0, pT = 0;
+        cities.forEach(c => {
+            let isP = (c.country==='趙'), cls = isP?'player':'enemy', txt = isP?`自軍 兵:${c.troops}`:`${c.country} 兵:${c.troops}`;
+            html += `<button class="c-btn ${cls}" onclick="openC(${c.id})">${c.id+1}. ${c.name} <span>${txt}</span></button>`;
+            if(isP) { pC++; pT += c.troops; }
+        });
+        document.getElementById('m-list').innerHTML = html;
+        document.getElementById('t-cities').innerText = pC;
+        document.getElementById('t-troops').innerText = pT;
+        if (pC === 19) alert('🎉【天下統一】全都市支配達成！');
+        if (pC === 0) alert('💀【滅亡】領土喪失。ゲームオーバー。');
+    }
+    function openC(id) {
+        let c = cities[id]; game.cId = id;
+        document.getElementById('c-ttl').innerText = `🏙️ ${c.name} メメニュー`;
+        document.getElementById('c-own').innerText = c.country;
+        document.getElementById('c-trp').innerText = c.troops;
+        if(c.country === '趙') {
+            document.getElementById('ops-p').style.display = 'block'; document.getElementById('ops-e').style.display = 'none';
+            document.getElementById('g-ttl').innerText = "📍 滞在自軍武将:";
+            document.getElementById('c-gens').innerHTML = pGens.map(g=>`<div class="item"><strong>${g.name}</strong> (統率:${g.ld})<br><span style="color:#fc0;">${g.s}</span></div>`).join('');
+        } else {
+            document.getElementById('ops-p').style.display = 'none'; document.getElementById('ops-e').style.display = 'block';
+            document.getElementById('g-ttl').innerText = "🔥 敵国武将データ:";
+            document.getElementById('c-gens').innerHTML = `<div class="item" style="border-left:3px solid #f33;"><strong>${c.g}</strong><br><span style="color:#f33;">${c.s}</span></div>`;
+        }
+        changeS('s-city');
+    }
+    function goAtk() {
+        let c = cities[game.cId];
+        if(c.troops <= 1000) { alert('都市に最低1000の防衛兵が必要です！'); return; }
+        document.getElementById('sel-g').innerHTML = pGens.map(g=>`<option value="${g.name}">${g.name}</option>`).join('');
+        document.getElementById('sel-t').innerHTML = cities.filter(tc=>tc.country!=='趙').map(tc=>`<option value="${tc.id}">${tc.name} (${tc.country} 兵:${tc.troops})</option>`).join('');
+        changeS('s-atk');
+    }
+    function setP(type) {
+        let c = cities[game.cId];
+        if(type === '出陣') {
+            let g = document.getElementById('sel-g').value, t = document.getElementById('sel-t').value;
+            game.plot = { type, from: c.id, to: parseInt(t), gen: g, trps: c.troops - 1000 };
+            document.getElementById('p-txt').innerText = `⚔️ ${c.name}から兵${c.troops-1000} [${g}] が ${cities[t].name} へ侵攻`;
+        } else {
+            game.plot = { type, from: c.id };
+            document.getElementById('p-txt').innerText = `🏛️ ${c.name} で [${type}] をプロット`;
+        }
+        changeS('s-main');
+    }
+    function run() {
+        let log = document.getElementById('l-log'); if(!game.plot) { alert('命令を設定してください。'); return; }
+        let res = `--- 【第 ${game.turn} ターン報告】 ---\n`, p = game.plot;
+        if(p.type === '富国強兵') {
+            if(game.gold >= 200) { game.gold -= 200; let r = (cities[p.from].name==='邯鄲')?1200:1000; game.rice += r; res += `【内政】${cities[p.from].name}で富国強兵。糧+${r}\n`; }
+            else res += "【内政失敗】金不足。\n";
+        } else if(p.type === '大徴兵令') {
+            if(game.gold >= 400) { game.gold -= 400; cities[p.from].troops += 2000; res += `【軍事】${cities[p.from].name}で徴兵。兵+2000\n`; }
+            else res += "【徴兵失敗】金不足。\n";
+        } else if(p.type === '出陣') {
+            let fC = cities[p.from], tC = cities[p.to], gd = pGens.find(g=>g.name===p.gen);
+            res += `【合戦】趙軍[${p.gen}](兵:${p.trps}) 💥 ${tC.country}[${tC.name}](兵:${tC.troops})\n`;
+            fC.troops -= p.trps;
+            let pPow = p.trps * (gd.ld / 90);
+            if(p.gen==='李牧') pPow *= 1.25; if(p.gen==='趙奢'&&tC.troops>p.trps) pPow *= 1.15;
+            if(pPow > tC.troops * 1.2) {
+                let loss = Math.floor(tC.troops * 0.4); if(p.gen==='廉頗') loss = Math.floor(loss * 0.7);
+                let rem = Math.max(1000, p.trps - loss);
+                res += `💥【大勝利】${tC.name}を占領！趙の領土としました！(駐留兵:${rem})\n`;
+                tC.country = '趙'; tC.troops = rem;
+            } else {
+                let loss = Math.floor(p.trps * 0.7); if(p.gen==='廉頗') loss = Math.floor(loss * 0.7);
+                fC.troops += (p.trps - loss); tC.troops = Math.max(1000, tC.troops - Math.floor(pPow*0.3));
+                res += `❌【敗北】撃退されました。損害兵:${loss}\n`;
+            }
+        }
+        res += `【敵国動向】\n`;
+        cities.forEach(c => {
+            if(c.country !== '趙') {
+                c.troops += Math.floor(Math.random() * 1200) + 800;
+                if(Math.random() < 0.15) {
+                    let pCs = cities.filter(pc=>pc.country==='趙');
+                    if(pCs.length > 0) {
+                        let target = pCs[Math.floor(Math.random()*pCs.length)], atk = Math.floor(c.troops * 0.4);
+                        if(atk > 2000) {
+                            c.troops -= atk; res += `⚔️警告：${c.country}軍が兵${atk}で【${target.name}】を急襲！\n`;
+                            if(atk > target.troops) { res += `💀落城：${target.name}が奪われました！\n`; target.country = c.country; target.troops = Math.floor(atk*0.6); }
+                            else { target.troops -= Math.floor(atk*0.5); res += `🛡️死守：撃退しました。(残兵:${target.troops})\n`; }
+                        }
+                    }
+                }
+            }
+        });
+        game.rice = Math.max(0, game.rice - 500);
+        if(game.rice <= 0) { res += "⚠️【餓死】兵糧切！兵力が毎ターン15%減少！\n"; cities.forEach(c=>{if(c.country==='趙')c.troops=Math.floor(c.troops*0.85);});}
+        let myC = cities.filter(c=>c.country==='趙').length; game.gold += myC * 150; game.rice += myC * 300; game.turn++;
+        document.getElementById('t-turn').innerText = game.turn; document.getElementById('t-gold').innerText = game.gold; document.getElementById('t-rice').innerText = game.rice;
+        render(); log.innerHTML = res + "\n---\n" + log.innerHTML; game.plot = null; document.getElementById('p-txt').innerText = "命令なし";
+    }
+    render();
+</script>
+</body>
+</html>
