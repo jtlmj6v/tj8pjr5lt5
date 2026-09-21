@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>戦国七雄・天下統一 〜14Style 1枚マップシミュレーション〜</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1e1e24;
+            --panel-bg: #25252d;
+            --text-color: #e2e8f0;
+            --accent-color: #d4af37;
+            --border-color: #3f3f46;
+            
+            /* 国別カラー */
+            --color-shin: #4f46e5;  /* 秦: 青紫 */
+            --color-cho: #10b981;   /* 趙: 緑 */
+            --color-gi: #ef4444;    /* 魏: 赤 */
+            --color-kan: #b45309;   /* 韓: 茶 */
+            --color-so: #84cc16;    /* 楚: 黄緑 */
+            --color-sei: #06b6d4;   /* 斉: 水色 */
+            --color-en: #ec4899;    /* 燕: ピンク */
+            --color-chu: #7c3aed;   /* 中山 */
+            --color-so-sub: #a8a29e; /* 宋 */
+            --color-ro: #6b7280;    /* 魯 */
+            --color-etsu: #a855f7;  /* 越 */
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px dashed var(--accent-color);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            margin: 3px 0 0 0;
+            font-size: 12px;
+            color: #a1a1aa;
+        }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11px;
+            color: #fff;
+            display: inline-block;
+        }
+        .bg-shin { background-color: var(--color-shin); }
+        .bg-cho { background-color: var(--color-cho); }
+        .bg-gi { background-color: var(--color-gi); }
+        .bg-kan { background-color: var(--color-kan); }
+        .bg-so { background-color: var(--color-so); color: #000; }
+        .bg-sei { background-color: var(--color-sei); color: #000; }
+        .bg-en { background-color: var(--color-en); }
+        .bg-chu { background-color: var(--color-chu); }
+        .bg-so-sub { background-color: var(--color-so-sub); }
+        .bg-ro { background-color: var(--color-ro); }
+        .bg-etsu { background-color: var(--color-etsu); }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            .status-bar { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .status-item span {
+            display: block;
+            font-size: 11px;
+            color: #a1a1aa;
+            margin-bottom: 2px;
+        }
+
+        .status-item strong {
+            font-size: 16px;
+            color: var(--accent-color);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 15px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .map-wrapper {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            background: #1b1b1f;
+            border-radius: 4px;
+            border: 1px solid #27272a;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+        }
+
+        .map-bg-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .city-node {
+            position: absolute;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .city-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(0,0,0,0.8);
+            transition: all 0.3s;
+        }
+
+        .city-node:hover .city-dot {
+            transform: scale(1.3);
+            box-shadow: 0 0 12px var(--accent-color);
+        }
+
+        .city-label {
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            font-size: 11px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-top: 4px;
+            white-space: nowrap;
+            border: 1px solid #444;
+            font-weight: bold;
+        }
+
+        .city-troops {
+            font-size: 9px;
+            color: #ccc;
+            font-weight: normal;
+            display: block;
+            text-align: center;
+        }
+
+        .supply-cut .city-dot {
+            animation: blink-cut 0.8s infinite alternate;
+        }
+        @keyframes blink-cut {
+            from { transform: scale(1); box-shadow: 0 0 4px #ff0000; }
+            to { transform: scale(1.2); box-shadow: 0 0 15px #ff0000; border-color: #ff0000; }
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 8px;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #a1a1aa;
+            margin-bottom: 4px;
+        }
+
+        select, button {
+            width: 100%;
+            background: var(--panel-bg);
+            color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #b45309, #d97706);
+            border: none;
+            font-weight: bold;
+            font-size: 15px;
+            padding: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+
+        .log-box {
+            background: #09090b;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 4px;
+        }
+
+        .log-item {
+            line-height: 1.4;
+            padding-bottom: 2px;
+            border-bottom: 1px dashed #27272a;
+        }
+        .log-sys { color: #a1a1aa; }
+        .log-player { color: #6ee7b7; }
+        .log-enemy { color: #fca5a5; }
+        .log-battle { color: #fde047; }
+
+        .route-line {
+            stroke: #27272a;
+            stroke-width: 2;
+            stroke-dasharray: 4;
+        }
+        .route-line.connected {
+            stroke: #4b5563;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>⚔ 戦国七雄・天下統一 ⚔</h1>
+        <div class="subtitle">〜戦国時代初期地図再現：1枚マップシミュレーション〜</div>
+    </header>
+
+    <div class="status-bar">
+        <div class="status-item"><span>年号</span><strong id="stat-year">戦国時代初期</strong></div>
+        <div class="status-item"><span>自軍勢力</span><span class="badge bg-cho">趙</span></div>
+        <div class="status-item"><span>金</span><strong id="stat-gold">1500</strong></div>
+        <div class="status-item"><span>兵糧</span><strong id="stat-food">6000</strong></div>
+        <div class="status-item"><span>総兵力</span><strong id="stat-soldiers">7000</strong></div>
+        <div class="status-item"><span>支配都市</span><strong id="stat-cities">2 / 19</strong></div>
+    </div>
+
+    <div class="main-grid">
+        <div class="map-wrapper">
+            <h2>🗺 1枚マップ（地図再現・府網） <span style="font-size:11px; font-weight:normal; color:#a1a1aa;">都市を選択すると詳細が見られます</span></h2>
+            <div class="map-container" id="map-container">
+                <svg class="map-bg-svg" id="map-svg" viewBox="0 0 500 500">
+                    <path d="M 30,220 Q 120,220 160,250 T 200,180 T 260,180 T 310,160 T 360,130" fill="none" stroke="#2563eb" stroke-width="3" opacity="0.4"/>
+                    <path d="M 30,380 Q 150,380 220,400 T 340,360 T 480,340" fill="none" stroke="#1d4ed8" stroke-width="3" opacity="0.4"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="panel-card">
+                <h2>📊 都市詳細情報</h2>
+                <div id="selected-city-panel">
+                    <p style="color:#a1a1aa; text-align:center; margin: 20px 0;">マップ上の都市をクリックすると、情報が表示されます。</p>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <h2>📜 戦略フェイズ命令</h2>
+                <div class="form-group">
+                    <label for="cmd-policy">🏛 趙国国策 (内政発令)</label>
+                    <select id="cmd-policy">
+                        <option value="none">現状維持 (消費なし)</option>
+                        <option value="rich">富国強兵 (金-200 / 兵糧+1000)</option>
+                        <option value="recruit">大徴兵令 (金-400 / 兵力+2000 邯鄲へ集結)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cmd-march-from">⚔ 出陣部隊・発向元（自軍都市のみ）</label>
+                    <select id="cmd-march-from" onchange="updateTargetOptions()">
+                        <option value="none">出陣しない</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cmd-march-to">🎯 進軍目標都市</label>
+                    <select id="cmd-march-to">
+                        <option value="none">-- 発向元を選択してください --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cmd-tactics">⚡ 部隊陣形・戦術指定</label>
+                    <select id="cmd-tactics">
+                        <option value="gyorin">魚鱗の陣 (平地決戦・攻撃重視)</option>
+                        <option value="hoyen">方円の陣 (防衛・粘り強さ重視)</option>
+                        <option value="gankou">雁行の陣 (兵站分断・包囲優先)</option>
+                    </select>
+                </div>
+
+                <button class="btn-primary" onclick="executeProgressPhase()">➡️ 進行フェイズを実行する</button>
+            </div>
+
+            <div class="panel-card" style="flex-grow: 1; display: flex; flex-direction: column;">
+                <h2>📜 進行フェイズ戦況報告</h2>
+                <div class="log-box" id="log-box">
+                    <div class="log-item log-sys">【システム】不具合を修正しました。占領したすべての都市から出陣が可能です！</div>
+                    <div class="log-item log-enemy">【軍師報告】李牧「総大将、これで『安邑』や『大梁』などの前線に集まった大軍を、そのまま次の侵攻へ活用できるようになりました！」</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const citiesData = {
+        "邯鄲": { x: 260, y: 155, country: "cho", troops: 5000, name: "邯鄲", adj: ["代", "中山", "安邑", "大梁", "曲阜"] },
+        "代": { x: 235, y: 70, country: "cho", troops: 2000, name: "代", adj: ["邯鄲", "中山", "北京"] },
+        "中山": { x: 270, y: 110, country: "chu", troops: 2500, name: "中山", adj: ["邯鄲", "代", "北京"] },
+        "北京": { x: 320, y: 75, country: "en", troops: 4000, name: "北京", adj: ["代", "中山", "臨淄"] },
+        "臨淄": { x: 380, y: 155, country: "sei", troops: 5000, name: "臨淄", adj: ["北京", "曲阜", "上海"] },
+        "曲阜": { x: 330, y: 195, country: "ro", troops: 1500, name: "曲阜", adj: ["臨淄", "邯鄲", "大梁", "宋"] },
+        "大梁": { x: 290, y: 220, country: "gi", troops: 4500, name: "大梁", adj: ["邯鲆", "曲阜", "新鄭", "安邑", "陳", "宋"] },
+        "安邑": { x: 210, y: 215, country: "gi", troops: 3000, name: "安邑", adj: ["邯鄲", "大梁", "新鄭", "咸陽"] },
+        "新鄭": { x: 245, y: 245, country: "kan", troops: 3500, name: "新鄭", adj: ["安邑", "大梁", "咸陽", "宛"] },
+        "咸陽": { x: 140, y: 260, country: "shin", troops: 6500, name: "咸陽", adj: ["安邑", "新鄭", "雍", "宛"] },
+        "雍": { x: 80, y: 250, country: "shin", troops: 3000, name: "雍", adj: ["咸陽", "成都"] },
+        "成都": { x: 50, y: 350, country: "shin", troops: 2000, name: "成都", adj: ["雍", "宛"] },
+        "宛": { x: 220, y: 310, country: "so", troops: 3500, name: "宛", adj: ["咸陽", "新鄭", "成都", "陳", "長沙"] },
+        "陳": { x: 295, y: 280, country: "so", troops: 3000, name: "陳", adj: ["大梁", "宛", "寿春", "宋"] },
+        "宋": { x: 340, y: 240, country: "so_sub", troops: 2000, name: "宋", adj: ["大梁", "曲阜", "陳", "寿春"] },
+        "寿春": { x: 360, y: 310, country: "so", troops: 4000, name: "寿春", adj: ["陳", "宋", "上海", "長沙"] },
+        "上海": { x: 440, y: 315, country: "etsu", troops: 4000, name: "上海", adj: ["臨淄", "寿春", "会稽"] },
+        "会稽": { x: 450, y: 370, country: "etsu", troops: 3000, name: "会稽", adj: ["上海", "長沙"] },
+        "長沙": { x: 290, y: 430, country: "so", troops: 4500, name: "長沙", adj: ["宛", "寿春", "会稽"] }
+    };
+
+    const countryNames = {
+        "cho": "趙 (自軍)", "shin": "秦", "gi": "魏", "kan": "韓", 
+        "so": "楚", "sei": "斉", "en": "燕", "chu": "中山", 
+        "so_sub": "宋", "ro": "魯", "etsu": "越"
+    };
+
+    const countryColors = {
+        "cho": "var(--color-cho)", "shin": "var(--color-shin)", "gi": "var(--color-gi)",
+        "kan": "var(--color-kan)", "so": "var(--color-so)", "sei": "var(--color-sei)",
+        "en": "var(--color-en)", "chu": "var(--color-chu)", "so_sub": "var(--color-so-sub)",
+        "ro": "var(--color-ro)", "etsu": "var(--color-etsu)"
+    };
+
+    let gameState = { year: 1, gold: 1500, food: 6000, selectedCity: null };
+
+    function addLog(text, className = "log-sys") {
+        const box = document.getElementById("log-box");
+        const item = document.createElement("div");
+        item.className = `log-item ${className}`;
+        item.innerText = text;
+        box.appendChild(item);
+    }
+
+    function initMap() {
+        const container = document.getElementById("map-container");
+        const svg = document.getElementById("map-svg");
+
+        document.querySelectorAll('.city-node').forEach(el => el.remove());
+        document.querySelectorAll('.route-line').forEach(el => el.remove());
+
+        const renderedPairs = new Set();
+        for (let name in citiesData) {
+            const city = citiesData[name];
+            city.adj.forEach(adjName => {
+                if (citiesData[adjName]) {
+                    const pairId = [name, adjName].sort().join('-');
+                    if (!renderedPairs.has(pairId)) {
+                        renderedPairs.add(pairId);
+                        const adjCity = citiesData[adjName];
+                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        line.setAttribute("x1", city.x); line.setAttribute("y1", city.y);
+                        line.setAttribute("x2", adjCity.x); line.setAttribute("y2", adjCity.y);
+                        line.setAttribute("class", city.country === adjCity.country ? "route-line connected" : "route-line");
+                        svg.appendChild(line);
+                    }
+                }
+            });
+        }
+
+        for (let name in citiesData) {
+            const city = citiesData[name];
+            const node = document.createElement("div");
+            node.className = "city-node";
+            node.style.left = `${(city.x / 500) * 100}%`; node.style.top = `${(city.y / 500) * 100}%`;
+            
+            let hasSupply = ["咸陽","邯鄲","大梁","新鄭","臨淄","北京","長沙"].includes(name) || 
+                             city.adj.some(adjName => citiesData[adjName] && citiesData[adjName].country === city.country);
+
+            if (!hasSupply && city.troops > 0) node.classList.add("supply-cut");
+
+            const dot = document.createElement("div");
+            dot.className = "city-dot"; dot.style.backgroundColor = countryColors[city.country];
+
+            const label = document.createElement("div");
+            label.className = "city-label"; label.innerHTML = `${name}<span class="city-troops">⚔️${city.troops}</span>`;
+
+            node.appendChild(dot); node.appendChild(label);
+            node.onclick = () => selectCity(name);
+            container.appendChild(node);
+        }
+        
+        updateSourceCityOptions();
+        updateStatusBar();
+    }
+
+    function updateSourceCityOptions() {
+        const fromSelect = document.getElementById("cmd-march-from");
+        const currentSelection = fromSelect.value;
+        
+        fromSelect.innerHTML = '<option value="none">出陣しない</option>';
+        
+        for (let name in citiesData) {
+            if (citiesData[name].country === "cho") {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.innerText = `${name} (駐屯: ⚔️${citiesData[name].troops})`;
+                if (name === currentSelection) {
+                    opt.selected = true;
+                }
+                fromSelect.appendChild(opt);
+            }
+        }
+    }
+
+    function updateStatusBar() {
+        let totalSoldiers = 0, zhaoCities = 0;
+        for (let name in citiesData) {
+            if (citiesData[name].country === "cho") { totalSoldiers += citiesData[name].troops; zhaoCities++; }
+        }
+        document.getElementById("stat-gold").innerText = gameState.gold;
+        document.getElementById("stat-food").innerText = gameState.food;
+        document.getElementById("stat-soldiers").innerText = totalSoldiers;
+        document.getElementById("stat-cities").innerText = `${zhaoCities} / 19`;
+        document.getElementById("stat-year").innerText = gameState.year === 1 ? "戦国初期" : `${gameState.year}期目`;
+    }
+
+    function selectCity(name) {
+        gameState.selectedCity = name;
+        const city = citiesData[name];
+        let adjButtons = city.adj.map(a => `<span class="badge" style="background-color:${countryColors[citiesData[a]?.country]}; margin-right:4px; margin-top:2px;">${a}</span>`).join(' ');
+
+        document.getElementById("selected-city-panel").innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                <div style="width:16px; height:16px; border-radius:50%; background-color:${countryColors[city.country]}; border:2px solid #fff;"></div>
+                <strong style="font-size:15px; color:#fff;">${name}</strong>
+                <span class="badge" style="background-color:${countryColors[city.country]}">${countryNames[city.country]}</span>
+            </div>
+            <table style="width:100%; font-size:13px; border-collapse:collapse; margin-bottom:10px;">
+                <tr style="border-bottom:1px solid #333;"><td style="padding:4px 0; color:#a1a1aa;">駐屯兵力:</td><td style="text-align:right; font-weight:bold; color:var(--accent-color);">⚔️ ${city.troops}</td></tr>
+            </table>
+            <div style="font-size:12px;"><div style="color:#a1a1aa; margin-bottom:4px;">🔗 隣接エリア:</div><div>${adjButtons}</div></div>
+        `;
+    }
+
+    function updateTargetOptions() {
+        const fromCity = document.getElementById("cmd-march-from").value;
+        const toSelect = document.getElementById("cmd-march-to");
+        toSelect.innerHTML = "";
+        if (fromCity === "none") { toSelect.innerHTML = '<option value="none">-- 発向元を選択してください --</option>'; return; }
+
+        citiesData[fromCity].adj.forEach(adjName => {
+            if (citiesData[adjName]) {
+                const opt = document.createElement("option"); opt.value = adjName;
+                opt.innerText = `${citiesData[adjName].country === "cho" ? "【輸送】" : "【侵攻】"} ${adjName} (${countryNames[citiesData[adjName].country]} : ⚔️${citiesData[adjName].troops})`;
+                toSelect.appendChild(opt);
+            }
+        });
+    }
+
+    function executeProgressPhase() {
+        gameState.year++;
+        addLog(`--- 進行フェイズ開始（第 ${gameState.year-1} 期） ---`, "log-sys");
+
+        const policy = document.getElementById("cmd-policy").value;
+        if (policy === "rich" && gameState.gold >= 200) { gameState.gold -= 200; gameState.food += 1000; addLog("【国策】富国強兵を推進（兵糧+1000）", "log-player"); }
+        if (policy === "recruit" && gameState.gold >= 400) { gameState.gold -= 400; citiesData["邯鄲"].troops += 2000; addLog("【国策】大徴兵令（邯鄲の兵力+2000）", "log-player"); }
+
+        const fromCity = document.getElementById("cmd-march-from").value;
+        const toCity = document.getElementById("cmd-march-to").value;
+        const tactics = document.getElementById("cmd-tactics").value;
+
+        if (fromCity !== "none" && toCity !== "none" && toCity) {
+            let src = citiesData[fromCity], dest = citiesData[toCity];
+            let marchTroops = Math.floor(src.troops * 0.7);
+            if (marchTroops >= 500) {
+                src.troops -= marchTroops;
+                if (dest.country === "cho") { dest.troops += marchTroops; addLog(`【軍略】${fromCity}から${toCity}へ ${marchTroops} 移動合流。`, "log-player"); }
+                else {
+                    addLog(`【激突】趙軍(${marchTroops}) vs ${toCity}(${dest.troops})`, "log-battle");
+                    let mod = tactics === "gyorin" ? 1.3 : (tactics === "hoyen" ? 0.8 : 1.0);
+                    let eLoss = Math.floor(marchTroops * 0.5 * mod), pLoss = Math.floor(dest.troops * 0.4);
+                    
+                    dest.troops = Math.max(0, dest.troops - eLoss);
+                    let rem = Math.max(0, marchTroops - pLoss);
+                    
+                    if (dest.troops === 0) {
+                        let oldCountry = dest.country; dest.country = "cho"; dest.troops = rem;
+                        addLog(`🎉【占領】「${toCity}」の府を我が色（緑）に塗りつぶしました！`, "log-player");
+                        
+                        dest.adj.forEach(a => {
+                            if (citiesData[a] && citiesData[a].country === oldCountry && !["咸陽","大梁","臨淄"].includes(a)) {
+                                if (!citiesData[a].adj.some(n => citiesData[n]?.country === oldCountry && n !== toCity)) {
+                                    citiesData[a].troops = Math.max(100, Math.floor(citiesData[a].troops * 0.2));
+                                    addLog(`⚡【兵站寸断】${toCity}陥落により「${a}」のサプライラインが断絶！敵軍が激減！`, "log-battle");
+                                }
+                            }
+                        });
+                    } else { src.troops += rem; addLog(`【敗退】攻略失敗。残兵 ${rem} は退却しました。`, "log-enemy"); }
+                }
+            }
+        }
+
+        if (citiesData["咸陽"].troops > 4000 && Math.random() > 0.4) {
+            let targets = ["安邑", "新鄭", "宛"];
+            let t = targets[Math.floor(Math.random() * targets.length)];
+            if (citiesData[t].country !== "shin") {
+                citiesData[t].troops = Math.max(0, citiesData[t].troops - 1200);
+                if (citiesData[t].troops === 0 && citiesData[t].country !== "cho") {
+                    citiesData[t].country = "shin"; citiesData[t].troops = 2000;
+                    addLog(`⚠️【勢力変動】秦が「${t}」を占領し、領地を青紫色に塗りつぶしました！`, "log-enemy");
+                }
+            }
+        }
+
+        let myCities = 0; for (let n in citiesData) { if (citiesData[n].country === "cho") myCities++; }
+        gameState.gold += myCities * 150; gameState.food += myCities * 300; gameState.food -= 400;
+
+        initMap();
+        if (gameState.selectedCity) selectCity(gameState.selectedCity);
+        
+        document.getElementById("cmd-march-from").value = "none";
+        updateTargetOptions();
+
+        let cKeys = Object.keys(citiesData);
+        let choCount = cKeys.filter(k => citiesData[k].country === "cho").length;
+        if (choCount === 0) { alert("趙国が滅亡しました。"); }
+        else if (choCount === cKeys.length) { alert("🏆 天下統一を達成しました！"); }
+    }
+
+    window.onload = () => { initMap(); updateTargetOptions(); };
+</script>
+</body>
+</html>
